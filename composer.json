@@ -1,0 +1,30 @@
+{
+    "name": "pocketreactor/raklib",
+    "description": "UDP network library that follows the RakNet protocol, for PocketReactor",
+    "type": "library",
+    "license": "GPL-3.0-or-later",
+    "require": {
+        "php": "^8.2",
+        "php-64bit": "*",
+        "ext-sockets": "*",
+        "ext-pmmpthread": "^6.0"
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^2.1",
+        "phpstan/phpstan-strict-rules": "^2.0",
+        "phpunit/phpunit": "^10.5"
+    },
+    "autoload": {
+        "psr-4": { "raklib\\": "src/" }
+    },
+    "autoload-dev": {
+        "psr-4": { "raklib\\tests\\": "tests/" }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "scripts": {
+        "analyse": "phpstan analyse",
+        "test": "phpunit"
+    }
+}
