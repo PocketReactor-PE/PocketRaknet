@@ -37,11 +37,8 @@ abstract class Packet{
             return substr($this->buffer, $this->offset);
         }
 
-        $buffer = "";
-        for(; $len > 0; --$len, ++$this->offset){
-            $buffer .= $this->buffer[$this->offset];
-        }
-
+        $buffer = substr($this->buffer, $this->offset, $len);
+        $this->offset += $len;
         return $buffer;
     }
 

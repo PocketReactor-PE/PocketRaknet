@@ -62,6 +62,8 @@ class SessionManager{
 
     protected $name = "";
 
+    private const RAKLIB_TPS = 100;
+    private const RAKLIB_TIME_PER_TICK = 1 / self::RAKLIB_TPS;
     protected $packetLimit = 200;
 
     protected $shutdown = false;
@@ -110,9 +112,9 @@ class SessionManager{
                 while(--$max and $this->receivePacket());
     	        while($this->receiveStream());
     			$time = microtime(true) - $start;
-    			if($time < 0.05){
-    				time_sleep_until(microtime(true) + 0.05 - $time);
-    			}
+                if($time < self::RAKLIB_TIME_PER_TICK){
+                    usleep((int) ((self::RAKLIB_TIME_PER_TICK - $time) * 1000000));
+                }
     			$this->tick();
             }catch(\Throwable $e){
                 //A single malformed packet or a bad session must never take down the whole RakLib thread.
@@ -138,7 +140,7 @@ class SessionManager{
 
 
 
-		if(($this->ticks & 0b1111) === 0){
+		if(($this->ticks % self::RAKLIB_TPS) === 0){
 			$diff = max(0.005, $time - $this->lastMeasure);
 			$this->streamOption("bandwidth", serialize([
 				"up" => $this->sendBytes / $diff,

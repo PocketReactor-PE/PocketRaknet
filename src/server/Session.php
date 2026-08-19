@@ -181,9 +181,9 @@ class Session{
             }
         }
 
-
+        $limite = microtime(true) - 5;
 		foreach($this->recoveryQueue as $seq => $pk){
-			if($pk->sendTime < (microtime(true) - 5)){
+			if($pk->sendTime < $limite){
 				$this->packetToSend[] = $pk;
 				unset($this->recoveryQueue[$seq]);
 			}else{
