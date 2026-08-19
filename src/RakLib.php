@@ -150,7 +150,4 @@ abstract class RakLib{
      */
     const PACKET_EMERGENCY_SHUTDOWN = 0x7f;
 
-    public static function bootstrap(\ClassLoader $loader){
-        $loader->addPath(dirname(__FILE__) . DIRECTORY_SEPARATOR . "..");
-    }
 }

@@ -15,15 +15,16 @@
 
 namespace raklib\server;
 
+use raklib\utils\Logger;
+
 
 class RakLibServer extends \pmmp\thread\Thread{
     protected $port;
     protected $interface;
-    /** @var \ThreadedLogger */
+    /** @var Logger */
     protected $logger;
-    protected $loader;
-
-    public $loadPaths;
+    /** @var string */
+    protected $composerAutoloaderPath;
 
     protected $shutdown;
 
@@ -35,14 +36,14 @@ class RakLibServer extends \pmmp\thread\Thread{
 	protected $mainPath;
 
 	/**
-	 * @param \ThreadedLogger $logger
-	 * @param \ClassLoader    $loader
+	 * @param Logger          $logger
+	 * @param string          $composerAutoloaderPath
 	 * @param int             $port
 	 * @param string          $interface
 	 *
 	 * @throws \Exception
 	 */
-    public function __construct(\ThreadedLogger $logger, \ClassLoader $loader, $port, $interface = "0.0.0.0"){
+    public function __construct(Logger $logger, $composerAutoloaderPath, $port, $interface = "0.0.0.0"){
         $this->port = (int) $port;
         if($port < 1 or $port > 65536){
             throw new \Exception("Invalid port range");
@@ -50,11 +51,7 @@ class RakLibServer extends \pmmp\thread\Thread{
 
         $this->interface = $interface;
         $this->logger = $logger;
-        $this->loader = $loader;
-        $loadPaths = [];
-        $this->addDependency($loadPaths, new \ReflectionClass($logger));
-        $this->addDependency($loadPaths, new \ReflectionClass($loader));
-        $this->loadPaths = \pmmp\thread\ThreadSafeArray::fromArray(array_reverse($loadPaths));
+        $this->composerAutoloaderPath = $composerAutoloaderPath;
         $this->shutdown = false;
 
         $this->externalQueue = new \pmmp\thread\ThreadSafeArray;
@@ -65,22 +62,9 @@ class RakLibServer extends \pmmp\thread\Thread{
 	    }else{
 		    $this->mainPath = \getcwd() . DIRECTORY_SEPARATOR;
 	    }
-        $this->start(\pmmp\thread\Thread::INHERIT_ALL);
+        $this->start(\pmmp\thread\Thread::INHERIT_NONE);
     }
 
-    protected function addDependency(array &$loadPaths, \ReflectionClass $dep){
-        if($dep->getFileName() !== false){
-            $loadPaths[$dep->getName()] = $dep->getFileName();
-        }
-
-        if($dep->getParentClass() instanceof \ReflectionClass){
-            $this->addDependency($loadPaths, $dep->getParentClass());
-        }
-
-        foreach($dep->getInterfaces() as $interface){
-            $this->addDependency($loadPaths, $interface);
-        }
-    }
 
     public function isShutdown(){
         return $this->shutdown === true;
@@ -99,7 +83,7 @@ class RakLibServer extends \pmmp\thread\Thread{
     }
 
     /**
-     * @return \ThreadedLogger
+     * @return Logger
      */
     public function getLogger(){
         return $this->logger;
@@ -213,13 +197,10 @@ class RakLibServer extends \pmmp\thread\Thread{
 	}
 
     public function run() : void{
-        //Load removed dependencies, can't use require_once()
-        foreach($this->loadPaths as $name => $path){
-            if(!class_exists($name, false) and !interface_exists($name, false)){
-                require($path);
-            }
-        }
-        $this->loader->register(true);
+        //The thread is started with INHERIT_NONE, so it begins with an empty class table and an
+        //empty include list. Composer's autoloader must therefore be loaded here, with require
+        //and not require_once, exactly as PocketMine does in CommonThreadPartsTrait.
+        require $this->composerAutoloaderPath;
 
 	    gc_enable();
 	    error_reporting(-1);

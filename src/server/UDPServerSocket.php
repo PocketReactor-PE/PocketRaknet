@@ -21,12 +21,14 @@
 
 namespace raklib\server;
 
+use raklib\utils\Logger;
+
 class UDPServerSocket{
-    /** @var \Logger */
+    /** @var Logger */
     protected $logger;
     protected $socket;
 
-    public function __construct(\ThreadedLogger $logger, $port = 19132, $interface = "0.0.0.0"){
+    public function __construct(Logger $logger, $port = 19132, $interface = "0.0.0.0"){
         $this->socket = socket_create(AF_INET, SOCK_DGRAM, SOL_UDP);
         //socket_set_option($this->socket, SOL_SOCKET, SO_BROADCAST, 1); //Allow sending broadcast messages
         if(@socket_bind($this->socket, $interface, $port) === true){
