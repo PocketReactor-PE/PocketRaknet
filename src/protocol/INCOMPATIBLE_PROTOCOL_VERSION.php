@@ -6,7 +6,7 @@ use raklib\RakLib;
 
 class INCOMPATIBLE_PROTOCOL_VERSION extends Packet {
 
-    public static $ID = 0x1A;
+    public static $ID = 0x19;
 
     public $protocolVersion;
     public $serverID;

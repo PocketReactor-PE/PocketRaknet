@@ -34,6 +34,7 @@ class EncapsulatedPacket{
     public $length = 0;
     public $messageIndex = null;
     public $orderIndex = null;
+    public $sequenceIndex = null;
     public $orderChannel = null;
     public $splitCount = null;
     public $splitID = null;
@@ -82,18 +83,19 @@ class EncapsulatedPacket{
          * 7: RELIABLE_ORDERED_WITH_ACK_RECEIPT
          */
 
-		if($reliability > 0){
-			if($reliability >= 2 and $reliability !== 5){
-				$packet->messageIndex = Binary::readLTriad(substr($binary, $offset, 3));
-				$offset += 3;
-			}
-
-			if($reliability <= 4 and $reliability !== 2){
-				$packet->orderIndex = Binary::readLTriad(substr($binary, $offset, 3));
-				$offset += 3;
-				$packet->orderChannel = ord($binary[$offset++]);
-			}
-		}
+		if($reliability >=2 && $reliability !== 5){
+            $packet->messageIndex = Binary::readLTriad(substr($binary, $offset, 3));
+            $offset += 3;
+        }
+        if($reliability === 1 || $reliability === 4){
+            $packet->sequenceIndex = Binary::readLTriad(substr($binary, $offset, 3));
+            $offset += 3;
+        }
+        if($reliability === 1 || $reliability === 3 || $reliability === 4 || $reliability === 7){
+            $packet->orderIndex = Binary::readLTriad(substr($binary, $offset, 3));
+            $offset += 3;
+            $packet->orderChannel = ord($binary[$offset++]);
+        }
 
         if($hasSplit){
             $packet->splitCount = Binary::readInt(substr($binary, $offset, 4));
@@ -103,7 +105,14 @@ class EncapsulatedPacket{
             $packet->splitIndex = Binary::readInt(substr($binary, $offset, 4));
             $offset += 4;
         }
-
+        if($length <= 0 || ($packet->orderChannel !== null && $packet->orderChannel >= 32)){
+            $packet->buffer = "";
+            return $packet;
+        }
+        if($hasSplit && $packet->splitIndex >= $packet->splitCount){
+            $packet->buffer = "";
+            return $packet;
+        }
         $packet->buffer = substr($binary, $offset, $length);
         $offset += $length;
 
@@ -111,7 +120,7 @@ class EncapsulatedPacket{
     }
 
     public function getTotalLength(){
-        return 3 + strlen($this->buffer) + ($this->messageIndex !== null ? 3 : 0) + ($this->orderIndex !== null ? 4 : 0) + ($this->hasSplit ? 10 : 0);
+        return 3 + strlen($this->buffer) + ($this->messageIndex !== null ? 3 : 0) + ($this->sequenceIndex !== null ? 3 : 0) + ($this->orderIndex !== null ? 4 : 0) + ($this->hasSplit ? 10 : 0);
     }
 
     /**
@@ -123,11 +132,10 @@ class EncapsulatedPacket{
         return
 			chr(($this->reliability << 5) | ($this->hasSplit ? 0b00010000 : 0)) .
 			($internal ? Binary::writeInt(strlen($this->buffer)) . Binary::writeInt($this->identifierACK) : Binary::writeShort(strlen($this->buffer) << 3)) .
-			($this->reliability > 0 ?
-				(($this->reliability >= 2 and $this->reliability !== 5) ? Binary::writeLTriad($this->messageIndex) : "") .
-				(($this->reliability <= 4 and $this->reliability !== 2) ? Binary::writeLTriad($this->orderIndex) . chr($this->orderChannel) : "")
-				: ""
-			) .
+            (($this->reliability >= 2 && $this->reliability !== 5) ? Binary::writeLTriad($this->messageIndex) : "") .
+            (($this->reliability === 1 || $this->reliability === 4) ? Binary::writeLTriad($this->sequenceIndex ?? 0) : "") .
+            (($this->reliability === 1 || $this->reliability === 3 || $this->reliability === 4 || $this->reliability === 7)
+                    ? Binary::writeLTriad($this->orderIndex) . chr($this->orderChannel) : "") .
 			($this->hasSplit ? Binary::writeInt($this->splitCount) . Binary::writeShort($this->splitID) . Binary::writeInt($this->splitIndex) : "")
 			. $this->buffer;
     }
