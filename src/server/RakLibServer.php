@@ -86,7 +86,14 @@ class RakLibServer extends \pmmp\thread\Thread{
      * @return Logger
      */
     public function getLogger(){
-        return $this->logger;
+        //A static holds the wrapper per THREAD, which is what we want: $this->logger is a shared
+        //thread-safe property and must keep pointing at the host logger, while each thread gets
+        //its own guard. See SafeLogger for why logging must never be able to throw here.
+        static $safe = null;
+        if($safe === null){
+                $safe = new \raklib\utils\SafeLogger($this->logger);
+        }
+        return $safe;
     }
 
     /**
