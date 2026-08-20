@@ -445,5 +445,9 @@ class SessionManager{
         $this->registerPacket(DATA_PACKET_F::$ID, DATA_PACKET_F::class);
         $this->registerPacket(NACK::$ID, NACK::class);
         $this->registerPacket(ACK::$ID, ACK::class);
+        //Same acknowledgement, but carrying the B and AS flag (0x20) that our own 0x84
+        //datagrams request. Without this entry it fell through to streamRaw() and the
+        //recovery queue was never released.
+        $this->registerPacket(0xe0, ACK::class);
     }
 }

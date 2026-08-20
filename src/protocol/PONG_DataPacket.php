@@ -23,18 +23,26 @@ namespace raklib\protocol;
 
 #include <rules/RakLibPacket.h>
 
-class PONG_DataPacket extends Packet{
+class PONG_DataPacket extends Packet
+{
     public static $ID = 0x03;
 
     public $pingID;
+    public $pongID;
 
-    public function encode(){
+    public function encode()
+    {
         parent::encode();
         $this->putLong($this->pingID);
+        //The client requires exactly 17 bytes: 0x03 + its timestamp + ours. A 9-byte pong is
+        //rejected by Update and dropped before it ever reaches the game layer.
+        $this->putLong($this->pongID);
     }
 
-    public function decode(){
+    public function decode()
+    {
         parent::decode();
         $this->pingID = $this->getLong();
+        $this->pongID = $this->getLong();
     }
 }

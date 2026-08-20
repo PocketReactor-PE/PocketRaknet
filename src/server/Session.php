@@ -47,6 +47,9 @@ class Session{
 	const MAX_SPLIT_SIZE = 128;
 	const MAX_SPLIT_COUNT = 4;
 
+    /** Resend delay, in seconds. RakNet uses 2s until a round trip has been measured. */
+    const DEFAULT_RTO = 2;
+
     public static $WINDOW_SIZE = 2048;
 
     private $messageIndex = 0;
@@ -84,6 +87,9 @@ class Session{
 
 	/** @var DataPacket[][] */
 	private $splitPackets = [];
+
+    /** @var int[] splitCount announced by the FIRST fragment of each splitID */
+    private $splitCounts = [];
 
     /** @var int[][] */
     private $needACK = [];
@@ -181,11 +187,17 @@ class Session{
             }
         }
 
-        $limite = microtime(true) - 5;
-		foreach($this->recoveryQueue as $seq => $pk){
-			if($pk->sendTime < $limite){
-				$this->packetToSend[] = $pk;
-				unset($this->recoveryQueue[$seq]);
+        //RakNet's default resend delay before any measurement: GetRTOForRetransmission caps
+        //it at 2s. We were waiting 5s, two and a half times too long.
+        $limite = microtime(true) - self::DEFAULT_RTO;
+        foreach($this->recoveryQueue as $seq => $pk){
+            if($pk->sendTime < $limite){
+                //A resend keeps its MESSAGE number but takes a NEW datagram number, exactly as
+                //the peer does. Reusing the old one would make it count as a duplicate datagram
+                //and corrupt the peer's round-trip measurement.
+                $pk->seqNumber = $this->sendSeqNumber++;
+                $this->packetToSend[] = $pk;
+                unset($this->recoveryQueue[$seq]);
 			}else{
 				break;
 			}
@@ -316,34 +328,42 @@ class Session{
         }
     }
 	
-	private function handleSplit(EncapsulatedPacket $packet){
-		if($packet->splitCount >= self::MAX_SPLIT_SIZE or $packet->splitIndex >= self::MAX_SPLIT_SIZE or $packet->splitIndex < 0){
-			return;
-		}
+	private function handleSplit(EncapsulatedPacket $packet)
+    {
+        if ($packet->splitCount >= self::MAX_SPLIT_SIZE or $packet->splitIndex >= self::MAX_SPLIT_SIZE or $packet->splitIndex < 0) {
+            return;
+        }
 
 
-		if(!isset($this->splitPackets[$packet->splitID])){
-			if(count($this->splitPackets) >= self::MAX_SPLIT_COUNT){
-				return;
-			}
-			$this->splitPackets[$packet->splitID] = [$packet->splitIndex => $packet];
-		}else{
-			$this->splitPackets[$packet->splitID][$packet->splitIndex] = $packet;
-		}
+        if (!isset($this->splitPackets[$packet->splitID])) {
+            if (count($this->splitPackets) >= self::MAX_SPLIT_COUNT) {
+                return;
+            }
+            $this->splitPackets[$packet->splitID] = [$packet->splitIndex => $packet];
+            $this->splitCounts[$packet->splitID] = $packet->splitCount;
+        } else {
+            //The splitCount is pinned by the first fragment. A fragment announcing a different
+            //one belongs to another message: accepting it would let count() match a smaller
+            //splitCount while indexes are still missing, and the reassembly loop would read
+            //absent slots (PHP warnings + a corrupt reassembled message).
+            if ($this->splitCounts[$packet->splitID] !== $packet->splitCount) {
+                return;
+            }
+            $this->splitPackets[$packet->splitID][$packet->splitIndex] = $packet;
+        }
+        if (count($this->splitPackets[$packet->splitID]) === $this->splitCounts[$packet->splitID]) {
+            $pk = new EncapsulatedPacket();
+            $pk->buffer = "";
+            for ($i = 0; $i < $this->splitCounts[$packet->splitID]; ++$i) {
+                $pk->buffer .= $this->splitPackets[$packet->splitID][$i]->buffer;
+            }
 
-		if(count($this->splitPackets[$packet->splitID]) === $packet->splitCount){
-			$pk = new EncapsulatedPacket();
-			$pk->buffer = "";
-			for($i = 0; $i < $packet->splitCount; ++$i){
-				$pk->buffer .= $this->splitPackets[$packet->splitID][$i]->buffer;
-			}
+            $pk->length = strlen($pk->buffer);
+            unset($this->splitPackets[$packet->splitID], $this->splitCounts[$packet->splitID]);
 
-			$pk->length = strlen($pk->buffer);
-			unset($this->splitPackets[$packet->splitID]);
-
-			$this->handleEncapsulatedPacketRoute($pk);
-		}
-	}
+            $this->handleEncapsulatedPacketRoute($pk);
+        }
+    }
 
 	private function handleEncapsulatedPacket(EncapsulatedPacket $packet){
 		if($packet->messageIndex === null){
@@ -438,6 +458,9 @@ class Session{
 
 				$pk = new PONG_DataPacket;
 				$pk->pingID = $dataPacket->pingID;
+                //Our clock, in milliseconds since the session opened: the RakNet::GetTime() value
+                //the peer expects as the second field of the 17 bytes.
+                $pk->pongID = (int) ((microtime(true) - $this->startTime) * 1000);
 				$pk->encode();
 
 				$sendPacket = new EncapsulatedPacket();

@@ -74,6 +74,13 @@ abstract class AcknowledgePacket extends Packet{
 
     public function decode(){
         parent::decode();
+        //Datagram flags: 0x40 = acknowledgement, 0x20 = carries B and AS WHEN 0x40 is set.
+        //In that case DatagramHeaderFormat::Serialize slips four arrival-rate bytes between
+        //the flags and the range list. The mask covers BOTH bits: on a NAK (0xa0) the 0x20
+        //IS the NAK flag and no float precedes the ranges.
+        if((ord($this->buffer[0]) & 0x60) === 0x60){
+            $this->offset += 4;
+        }
         $count = $this->getShort();
         $this->packets = [];
         $cnt = 0;
