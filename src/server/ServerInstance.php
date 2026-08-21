@@ -13,9 +13,9 @@
  *
  */
 
-namespace raklib\server;
+namespace pocketraknet\server;
 
-use raklib\protocol\EncapsulatedPacket;
+use pocketraknet\protocol\EncapsulatedPacket;
 
 interface ServerInstance{
 

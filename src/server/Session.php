@@ -13,30 +13,30 @@
  *
  */
 
-namespace raklib\server;
+namespace pocketraknet\server;
 
-use raklib\Binary;
-use raklib\protocol\ACK;
-use raklib\protocol\CLIENT_CONNECT_DataPacket;
-use raklib\protocol\CLIENT_DISCONNECT_DataPacket;
-use raklib\protocol\CLIENT_HANDSHAKE_DataPacket;
-use raklib\protocol\DATA_PACKET_0;
-use raklib\protocol\DATA_PACKET_4;
-use raklib\protocol\DataPacket;
-use raklib\protocol\EncapsulatedPacket;
-use raklib\protocol\INCOMPATIBLE_PROTOCOL_VERSION;
-use raklib\protocol\NACK;
-use raklib\protocol\OPEN_CONNECTION_REPLY_1;
-use raklib\protocol\OPEN_CONNECTION_REPLY_2;
-use raklib\protocol\OPEN_CONNECTION_REQUEST_1;
-use raklib\protocol\OPEN_CONNECTION_REQUEST_2;
-use raklib\protocol\Packet;
-use raklib\protocol\PING_DataPacket;
-use raklib\protocol\PONG_DataPacket;
-use raklib\protocol\SERVER_HANDSHAKE_DataPacket;
-use raklib\protocol\UNCONNECTED_PING;
-use raklib\protocol\UNCONNECTED_PONG;
-use raklib\RakLib;
+use pocketraknet\Binary;
+use pocketraknet\protocol\ACK;
+use pocketraknet\protocol\CLIENT_CONNECT_DataPacket;
+use pocketraknet\protocol\CLIENT_DISCONNECT_DataPacket;
+use pocketraknet\protocol\CLIENT_HANDSHAKE_DataPacket;
+use pocketraknet\protocol\DATA_PACKET_0;
+use pocketraknet\protocol\DATA_PACKET_4;
+use pocketraknet\protocol\DataPacket;
+use pocketraknet\protocol\EncapsulatedPacket;
+use pocketraknet\protocol\INCOMPATIBLE_PROTOCOL_VERSION;
+use pocketraknet\protocol\NACK;
+use pocketraknet\protocol\OPEN_CONNECTION_REPLY_1;
+use pocketraknet\protocol\OPEN_CONNECTION_REPLY_2;
+use pocketraknet\protocol\OPEN_CONNECTION_REQUEST_1;
+use pocketraknet\protocol\OPEN_CONNECTION_REQUEST_2;
+use pocketraknet\protocol\Packet;
+use pocketraknet\protocol\PING_DataPacket;
+use pocketraknet\protocol\PONG_DataPacket;
+use pocketraknet\protocol\SERVER_HANDSHAKE_DataPacket;
+use pocketraknet\protocol\UNCONNECTED_PING;
+use pocketraknet\protocol\UNCONNECTED_PONG;
+use pocketraknet\RakLib;
 
 class Session{
     const STATE_UNCONNECTED = 0;

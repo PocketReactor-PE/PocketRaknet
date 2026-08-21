@@ -13,11 +13,11 @@
  *
  */
 
-namespace raklib\server;
+namespace pocketraknet\server;
 
-use raklib\Binary;
-use raklib\protocol\EncapsulatedPacket;
-use raklib\RakLib;
+use pocketraknet\Binary;
+use pocketraknet\protocol\EncapsulatedPacket;
+use pocketraknet\RakLib;
 
 class ServerHandler{
 

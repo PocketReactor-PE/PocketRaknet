@@ -13,7 +13,7 @@
    *
    */
 
-namespace raklib\utils;
+namespace pocketraknet\utils;
 
 /**
  * Guards every call to the host logger.

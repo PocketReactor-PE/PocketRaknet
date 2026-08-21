@@ -13,7 +13,7 @@
  *
  */
 
-namespace raklib\protocol;
+namespace pocketraknet\protocol;
 
 class ACK extends AcknowledgePacket{
     public static $ID = 0xc0;

@@ -19,9 +19,9 @@
  *
 */
 
-namespace raklib\server;
+namespace pocketraknet\server;
 
-use raklib\utils\Logger;
+use pocketraknet\utils\Logger;
 
 class UDPServerSocket{
     /** @var Logger */

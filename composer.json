@@ -1,5 +1,5 @@
 {
-    "name": "pocketreactor/raklib",
+    "name": "pocketreactor/pocketraknet",
     "description": "UDP network library that follows the RakNet protocol, for PocketReactor",
     "type": "library",
     "license": "GPL-3.0-or-later",
@@ -15,10 +15,10 @@
         "phpunit/phpunit": "^10.5"
     },
     "autoload": {
-        "psr-4": { "raklib\\": "src/" }
+        "psr-4": { "pocketraknet\\": "src/" }
     },
     "autoload-dev": {
-        "psr-4": { "raklib\\tests\\": "tests/" }
+        "psr-4": { "pocketraknet\\tests\\": "tests/" }
     },
     "config": {
         "sort-packages": true

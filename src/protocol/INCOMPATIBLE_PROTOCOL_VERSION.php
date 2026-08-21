@@ -1,8 +1,8 @@
 <?php
 
-namespace raklib\protocol;
+namespace pocketraknet\protocol;
 
-use raklib\RakLib;
+use pocketraknet\RakLib;
 
 class INCOMPATIBLE_PROTOCOL_VERSION extends Packet {
 

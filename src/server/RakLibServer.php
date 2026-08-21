@@ -13,9 +13,9 @@
  *
  */
 
-namespace raklib\server;
+namespace pocketraknet\server;
 
-use raklib\utils\Logger;
+use pocketraknet\utils\Logger;
 
 
 class RakLibServer extends \pmmp\thread\Thread{
@@ -91,7 +91,7 @@ class RakLibServer extends \pmmp\thread\Thread{
         //its own guard. See SafeLogger for why logging must never be able to throw here.
         static $safe = null;
         if($safe === null){
-                $safe = new \raklib\utils\SafeLogger($this->logger);
+                $safe = new \pocketraknet\utils\SafeLogger($this->logger);
         }
         return $safe;
     }

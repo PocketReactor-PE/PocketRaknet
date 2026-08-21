@@ -19,7 +19,7 @@
  *
 */
 
-namespace raklib\protocol;
+namespace pocketraknet\protocol;
 
 class CLIENT_DISCONNECT_DataPacket extends Packet{
     public static $ID = 0x15;

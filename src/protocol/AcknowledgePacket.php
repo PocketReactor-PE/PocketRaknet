@@ -13,10 +13,10 @@
  *
  */
 
-namespace raklib\protocol;
+namespace pocketraknet\protocol;
 
 #ifndef COMPILE
-use raklib\Binary;
+use pocketraknet\Binary;
 #endif
 
 #include <rules/RakLibPacket.h>

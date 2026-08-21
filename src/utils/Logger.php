@@ -13,7 +13,7 @@
  *
  */
 
-namespace raklib\utils;
+namespace pocketraknet\utils;
 
 /**
  * Logging contract required by RakLib.

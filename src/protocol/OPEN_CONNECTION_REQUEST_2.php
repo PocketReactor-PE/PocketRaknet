@@ -13,12 +13,12 @@
  *
  */
 
-namespace raklib\protocol;
+namespace pocketraknet\protocol;
 
 #include <rules/RakLibPacket.h>
 
 
-use raklib\RakLib;
+use pocketraknet\RakLib;
 
 class OPEN_CONNECTION_REQUEST_2 extends Packet{
     public static $ID = 0x07;

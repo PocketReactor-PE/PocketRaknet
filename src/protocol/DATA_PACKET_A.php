@@ -13,7 +13,7 @@
  *
  */
 
-namespace raklib\protocol;
+namespace pocketraknet\protocol;
 
 
 class DATA_PACKET_A extends DataPacket{

@@ -13,7 +13,7 @@
  *
  */
 
-namespace raklib;
+namespace pocketraknet;
 
 
 //Dependencies check

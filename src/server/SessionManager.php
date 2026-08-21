@@ -13,38 +13,38 @@
  *
  */
 
-namespace raklib\server;
+namespace pocketraknet\server;
 
-use raklib\Binary;
-use raklib\protocol\ACK;
-use raklib\protocol\ADVERTISE_SYSTEM;
-use raklib\protocol\DATA_PACKET_0;
-use raklib\protocol\DATA_PACKET_1;
-use raklib\protocol\DATA_PACKET_2;
-use raklib\protocol\DATA_PACKET_3;
-use raklib\protocol\DATA_PACKET_4;
-use raklib\protocol\DATA_PACKET_5;
-use raklib\protocol\DATA_PACKET_6;
-use raklib\protocol\DATA_PACKET_7;
-use raklib\protocol\DATA_PACKET_8;
-use raklib\protocol\DATA_PACKET_9;
-use raklib\protocol\DATA_PACKET_A;
-use raklib\protocol\DATA_PACKET_B;
-use raklib\protocol\DATA_PACKET_C;
-use raklib\protocol\DATA_PACKET_D;
-use raklib\protocol\DATA_PACKET_E;
-use raklib\protocol\DATA_PACKET_F;
-use raklib\protocol\EncapsulatedPacket;
-use raklib\protocol\NACK;
-use raklib\protocol\OPEN_CONNECTION_REPLY_1;
-use raklib\protocol\OPEN_CONNECTION_REPLY_2;
-use raklib\protocol\OPEN_CONNECTION_REQUEST_1;
-use raklib\protocol\OPEN_CONNECTION_REQUEST_2;
-use raklib\protocol\Packet;
-use raklib\protocol\UNCONNECTED_PING;
-use raklib\protocol\UNCONNECTED_PING_OPEN_CONNECTIONS;
-use raklib\protocol\UNCONNECTED_PONG;
-use raklib\RakLib;
+use pocketraknet\Binary;
+use pocketraknet\protocol\ACK;
+use pocketraknet\protocol\ADVERTISE_SYSTEM;
+use pocketraknet\protocol\DATA_PACKET_0;
+use pocketraknet\protocol\DATA_PACKET_1;
+use pocketraknet\protocol\DATA_PACKET_2;
+use pocketraknet\protocol\DATA_PACKET_3;
+use pocketraknet\protocol\DATA_PACKET_4;
+use pocketraknet\protocol\DATA_PACKET_5;
+use pocketraknet\protocol\DATA_PACKET_6;
+use pocketraknet\protocol\DATA_PACKET_7;
+use pocketraknet\protocol\DATA_PACKET_8;
+use pocketraknet\protocol\DATA_PACKET_9;
+use pocketraknet\protocol\DATA_PACKET_A;
+use pocketraknet\protocol\DATA_PACKET_B;
+use pocketraknet\protocol\DATA_PACKET_C;
+use pocketraknet\protocol\DATA_PACKET_D;
+use pocketraknet\protocol\DATA_PACKET_E;
+use pocketraknet\protocol\DATA_PACKET_F;
+use pocketraknet\protocol\EncapsulatedPacket;
+use pocketraknet\protocol\NACK;
+use pocketraknet\protocol\OPEN_CONNECTION_REPLY_1;
+use pocketraknet\protocol\OPEN_CONNECTION_REPLY_2;
+use pocketraknet\protocol\OPEN_CONNECTION_REQUEST_1;
+use pocketraknet\protocol\OPEN_CONNECTION_REQUEST_2;
+use pocketraknet\protocol\Packet;
+use pocketraknet\protocol\UNCONNECTED_PING;
+use pocketraknet\protocol\UNCONNECTED_PING_OPEN_CONNECTIONS;
+use pocketraknet\protocol\UNCONNECTED_PONG;
+use pocketraknet\RakLib;
 
 class SessionManager{
     protected $packetPool = [];
