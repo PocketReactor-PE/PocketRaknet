@@ -102,6 +102,11 @@ class SessionManager{
         $this->tickProcessor();
     }
 
+    private function sessionExists($ip, $port)
+    {
+        return isset($this->sessions[$ip.":".$port]);
+    }
+
     private function tickProcessor(){
         $this->lastMeasure = microtime(true);
 
@@ -187,8 +192,10 @@ class SessionManager{
             }
 
             if(($packet = $this->getPacketFromPool($pid)) !== null){
-                $packet->buffer = $buffer;
-                $this->getSession($source, $port)->handlePacket($packet);
+               if($this->sessionExists($source, $port) || $pid === OPEN_CONNECTION_REQUEST_1::$ID || $pid === OPEN_CONNECTION_REQUEST_2::$ID){
+                   $packet->buffer = $buffer;
+                   $this->getSession($source, $port)->handlePacket($packet);
+               }
 	            return true;
             }elseif($pid === UNCONNECTED_PING::$ID){
                 //No need to create a session for just pings
