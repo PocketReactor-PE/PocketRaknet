@@ -554,6 +554,10 @@ class Session{
                 $this->state = self::STATE_CONNECTING_1;
             }elseif($this->state === self::STATE_CONNECTING_1 and $packet instanceof OPEN_CONNECTION_REQUEST_2){
                 $this->id = $packet->clientID;
+                $existing = $this->sessionManager->getSessionByClientID($this->id);
+                if($existing !== null && $existing !== $this){
+                    $this->sessionManager->removeSession($existing, "Guid reused by new connection");
+                }
                 if($packet->serverPort === $this->sessionManager->getPort() or !$this->sessionManager->portChecking){
                     //Clamp both ends: RakNet minimum MTU is 576. A value of 0 (or anything < 34)
                     //would make str_split() length negative in addEncapsulatedToQueue() and crash the thread.

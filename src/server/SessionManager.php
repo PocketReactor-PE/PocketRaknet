@@ -107,6 +107,16 @@ class SessionManager{
         return isset($this->sessions[$ip.":".$port]);
     }
 
+    public function getSessionByClientID($clientID)
+    {
+        foreach ($this->sessions as $session) {
+            if ($session !== null && $session->getID() == $clientID) {
+                return $session;
+            }
+        }
+        return null;
+    }
+
     private function tickProcessor(){
         $this->lastMeasure = microtime(true);
 
