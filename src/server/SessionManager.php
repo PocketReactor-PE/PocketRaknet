@@ -74,6 +74,14 @@ class SessionManager{
     protected $block = [];
     protected $ipSec = [];
 
+    /**
+     * Addresses that blockAddress() never blocks, as address => true.
+     * The per-address counter cannot tell one flooding client from several sharing
+     * the same address, so blocking cuts them all at once. Loopback can only be a
+     * test rig, never an attacker worth blocking.
+     */
+    protected $blockExceptions = ["127.0.0.1" => true, "::1" => true];
+
     protected $pingTimes = [];
 
     protected $serverId = 0;
@@ -390,6 +398,10 @@ class SessionManager{
     }
 
     public function blockAddress($address, $timeout = 300){
+        if(isset($this->blockExceptions[$address])){
+            return;
+        }
+
         $final = microtime(true) + $timeout;
         if(!isset($this->block[$address]) or $timeout === -1){
             if($timeout === -1){
