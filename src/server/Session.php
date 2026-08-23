@@ -537,22 +537,22 @@ class Session{
                 }
             }
 
-        }elseif($packet::$ID > 0x00 and $packet::$ID < 0x80){ //Not Data packet :)
+        }elseif($packet::$ID > 0x00 && $packet::$ID < 0x80){ //Not Data packet :)
             $packet->decode();
             if($packet instanceof OPEN_CONNECTION_REQUEST_1){
-//                if($packet->protocol !== RakLib::PROTOCOL){
-//                    $pk = new INCOMPATIBLE_PROTOCOL_VERSION();
-//                    $pk->protocolVersion = RakLib::PROTOCOL;
-//                    $pk->serverID = $this->sessionManager->getID();
-//                    $this->sendPacket($pk);
-//                    return;
-//                }
+                if($packet->protocol !== RakLib::PROTOCOL){
+                    $pk = new INCOMPATIBLE_PROTOCOL_VERSION();
+                    $pk->protocolVersion = RakLib::PROTOCOL;
+                    $pk->serverID = $this->sessionManager->getID();
+                    $this->sendPacket($pk);
+                    return;
+                }
                 $pk = new OPEN_CONNECTION_REPLY_1();
                 $pk->mtuSize = $packet->mtuSize;
                 $pk->serverID = $this->sessionManager->getID();
                 $this->sendPacket($pk);
                 $this->state = self::STATE_CONNECTING_1;
-            }elseif($this->state === self::STATE_CONNECTING_1 and $packet instanceof OPEN_CONNECTION_REQUEST_2){
+            }elseif($this->state === self::STATE_CONNECTING_1 && $packet instanceof OPEN_CONNECTION_REQUEST_2){
                 $this->id = $packet->clientID;
                 $existing = $this->sessionManager->getSessionByClientID($this->id);
                 if($existing !== null && $existing !== $this){

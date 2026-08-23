@@ -21,8 +21,6 @@
 
 namespace pocketraknet\protocol;
 
-#include <rules/RakLibPacket.h>
-
 class SERVER_HANDSHAKE_DataPacket extends Packet{
     public static $ID = 0x10;
 

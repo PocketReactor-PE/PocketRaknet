@@ -15,9 +15,6 @@
 
 namespace pocketraknet\protocol;
 
-#include <rules/RakLibPacket.h>
-
-
 use pocketraknet\RakLib;
 
 class UNCONNECTED_PONG extends Packet{
@@ -39,7 +36,7 @@ class UNCONNECTED_PONG extends Packet{
         parent::decode();
         $this->pingID = $this->getLong();
         $this->serverID = $this->getLong();
-        $this->offset += 16; //magic
+        $this->offset += 16;
         $this->serverName = $this->getString();
     }
 }

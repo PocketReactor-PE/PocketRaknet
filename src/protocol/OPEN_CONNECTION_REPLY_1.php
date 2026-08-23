@@ -15,9 +15,6 @@
 
 namespace pocketraknet\protocol;
 
-#include <rules/RakLibPacket.h>
-
-
 use pocketraknet\RakLib;
 
 class OPEN_CONNECTION_REPLY_1 extends Packet{
@@ -36,7 +33,7 @@ class OPEN_CONNECTION_REPLY_1 extends Packet{
 
     public function decode(){
         parent::decode();
-        $this->offset += 16; //Magic
+        $this->offset += 16;
         $this->serverID = $this->getLong();
         $this->getByte(); //security
         $this->mtuSize = $this->getShort();

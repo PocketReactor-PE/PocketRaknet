@@ -200,29 +200,55 @@ class SessionManager{
             if($pid == UNCONNECTED_PONG::$ID){
                 return true;
             }
-
-            if(($packet = $this->getPacketFromPool($pid)) !== null){
-               if($this->sessionExists($source, $port) || $pid === OPEN_CONNECTION_REQUEST_1::$ID || $pid === OPEN_CONNECTION_REQUEST_2::$ID){
-                   $packet->buffer = $buffer;
-                   $this->getSession($source, $port)->handlePacket($packet);
-               }
-	            return true;
-            }elseif($pid === UNCONNECTED_PING::$ID){
-                //No need to create a session for just pings
-                $packet = new UNCONNECTED_PING;
+            //--- Offline messages ----------------------------------------------------
+            //Decoded and validated HERE, before getSession(): getSession() allocates a
+            //Session on the very first OPEN_CONNECTION_REQUEST_1, so validating any later
+            //would be too late - the object would already exist.
+            //The length test comes before decode() because the readers in Packet are
+            //unbounded and raise PHP warnings on a truncated buffer
+            if($pid === UNCONNECTED_PING::$ID){
+                if($len < UNCONNECTED_PING::$MIN_LENGTH){
+                    return true;
+                }
+                $packet = new UNCONNECTED_PING();
                 $packet->buffer = $buffer;
                 $packet->decode();
-
+                if(!$packet->isValid()){
+                    return true;
+                }
+                //No need to create a session for just ping
                 $pk = new UNCONNECTED_PONG();
-                $pk->serverID = $this->getID();
+                $pk->serverID = $this->serverId;
                 $pk->pingID = $packet->pingID;
                 $pk->serverName = $this->getName();
-                $this->sendPacket($pk, $source, $port);
-            }elseif($buffer !== ""){
+                $this->sendPacket($pk,$source,$port);
+                return true;
+            }
+            if($pid === OPEN_CONNECTION_REQUEST_1::$ID || $pid === OPEN_CONNECTION_REQUEST_2::$ID){
+                $packet = $this->getPacketFromPool($pid);
+                if($len < $packet::$MIN_LENGTH){
+                    return true;
+                }
+                $packet->buffer = $buffer;
+                $packet->decode();
+                if(!$packet->isValid()){
+                    return true;
+                }
+                $this->getSession($source,$port)->handlePacket($packet);
+                return true;
+            }
+            //--- Connected traffic ---------------------------------------------------
+            if(($packet = $this->getPacketFromPool($pid)) !== null){
+                if($this->sessionExists($source, $port)){
+                    $packet->buffer = $buffer;
+                    $this->getSession($source, $port)->handlePacket($packet);
+                }
+                return true;
+            }
+
+            if($buffer !== ""){
                 $this->streamRaw($source, $port, $buffer);
-	            return true;
-            }else{
-	            return false;
+                return true;
             }
         }
 

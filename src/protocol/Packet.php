@@ -15,11 +15,7 @@
 
 namespace pocketraknet\protocol;
 
-#ifndef COMPILE
 use pocketraknet\Binary;
-#endif
-
-#include <rules/RakLibPacket.h>
 
 abstract class Packet{
     public static $ID = -1;

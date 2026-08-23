@@ -15,11 +15,8 @@
 
 namespace pocketraknet\protocol;
 
-#ifndef COMPILE
 use pocketraknet\Binary;
-#endif
 
-#include <rules/RakLibPacket.h>
 
 abstract class AcknowledgePacket extends Packet{
     /** @var int[] */

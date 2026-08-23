@@ -15,27 +15,26 @@
 
 namespace pocketraknet\protocol;
 
-#include <rules/RakLibPacket.h>
-
-
 use pocketraknet\RakLib;
 
-class OPEN_CONNECTION_REQUEST_1 extends Packet{
+class OPEN_CONNECTION_REQUEST_1 extends OfflineMessage{
     public static $ID = 0x05;
+
+    public static $MIN_LENGTH = 18; //1 (ID) + 16 (MAGIC) + 1 (protocol)
 
     public $protocol = RakLib::PROTOCOL;
     public $mtuSize;
 
     public function encode(){
         parent::encode();
-        $this->put(RakLib::MAGIC);
+        $this->writeMagic();
         $this->putByte($this->protocol);
         $this->put(str_repeat(chr(0x00), $this->mtuSize - 18));
     }
 
     public function decode(){
         parent::decode();
-        $this->offset += 16; //Magic
+        $this->readMagic();
         $this->protocol = $this->getByte();
         $this->mtuSize = strlen($this->get(true)) + 18;
     }
