@@ -77,6 +77,7 @@ class SessionManager{
      */
     protected $globalPacketLimit = 2000;
     protected $globalCount = 0;
+    protected $globalDropped = 0;
 
     /**
      * Half-open handshakes, as "address:port" => time of the REQUEST_1.
@@ -183,6 +184,12 @@ class SessionManager{
 		}
 		$this->ipSec = [];
 		$this->globalCount = 0;
+		if($this->globalDropped > 0){
+			//Never drop silently: a dropped datagram becomes a peer retransmission, which is
+			//otherwise indistinguishable from ordinary packet loss when reading a load test.
+			$this->getLogger()->notice("Global packet limit reached: dropped " . $this->globalDropped . " datagrams in one tick (limit " . $this->globalPacketLimit . ")");
+			$this->globalDropped = 0;
+		}
 
 		if($this->pendingConnections !== []){
 			$expiry = $time - self::PENDING_TIMEOUT;
@@ -230,6 +237,7 @@ class SessionManager{
             }
 
             if(++$this->globalCount > $this->globalPacketLimit){
+                ++$this->globalDropped;
                 return true; //drop before parsing; the loop keeps draining the socket
             }
 
