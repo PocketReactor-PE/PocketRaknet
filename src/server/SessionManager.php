@@ -69,13 +69,16 @@ class SessionManager{
 
     /**
      * Ceiling on datagrams accepted per tick, all sources together.
-     * The per-address counter is useless against a flood with forged sources: every
-     * fake address starts with a fresh budget, so only a global count caps it.
-     * 120 bots were measured at about 26 datagrams per tick, so this leaves roughly
-     * seventy times the observed load, and still fires well below the 5000-packet
-     * ceiling of the receive loop - above that it could never trigger at all.
+     * The per-address counter is useless against a flood with forged sources: every fake
+     * address starts with a fresh budget, so only a global count caps it.
+     *
+     * The usable range is narrow, and measured rather than guessed. The receive loop is
+     * already bounded at 5000 datagrams between two ticks, so any value at or above that
+     * can never fire. At the low end, 120 clients connecting at once were measured
+     * peaking at 2271 datagrams in a single tick - a legitimate burst, and 2000 cut into
+     * it, turning honest traffic into peer retransmissions. 4000 sits between the two.
      */
-    protected $globalPacketLimit = 2000;
+    protected $globalPacketLimit = 4000;
     protected $globalCount = 0;
     protected $globalDropped = 0;
 
