@@ -17,8 +17,9 @@ namespace pocketraknet\protocol;
 
 use pocketraknet\RakLib;
 
-class UNCONNECTED_PONG extends Packet{
+class UNCONNECTED_PONG extends OfflineMessage{
     public static $ID = 0x1c;
+    public static $MIN_LENGTH = 35; //1 + 8 (pingID) + 8 (serverID) + 16 (MAGIC) + 2 (name length)
 
     public $pingID;
     public $serverID;
@@ -28,7 +29,7 @@ class UNCONNECTED_PONG extends Packet{
         parent::encode();
         $this->putLong($this->pingID);
         $this->putLong($this->serverID);
-        $this->put(RakLib::MAGIC);
+        $this->writeMagic();
         $this->putString($this->serverName);
     }
 
@@ -36,7 +37,7 @@ class UNCONNECTED_PONG extends Packet{
         parent::decode();
         $this->pingID = $this->getLong();
         $this->serverID = $this->getLong();
-        $this->offset += 16;
+        $this->readMagic();
         $this->serverName = $this->getString();
     }
 }

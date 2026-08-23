@@ -537,41 +537,18 @@ class Session{
                 }
             }
 
-        }elseif($packet::$ID > 0x00 && $packet::$ID < 0x80){ //Not Data packet :)
-            $packet->decode();
-            if($packet instanceof OPEN_CONNECTION_REQUEST_1){
-                if($packet->protocol !== RakLib::PROTOCOL){
-                    $pk = new INCOMPATIBLE_PROTOCOL_VERSION();
-                    $pk->protocolVersion = RakLib::PROTOCOL;
-                    $pk->serverID = $this->sessionManager->getID();
-                    $this->sendPacket($pk);
-                    return;
-                }
-                $pk = new OPEN_CONNECTION_REPLY_1();
-                $pk->mtuSize = $packet->mtuSize;
-                $pk->serverID = $this->sessionManager->getID();
-                $this->sendPacket($pk);
-                $this->state = self::STATE_CONNECTING_1;
-            }elseif($this->state === self::STATE_CONNECTING_1 && $packet instanceof OPEN_CONNECTION_REQUEST_2){
-                $this->id = $packet->clientID;
-                $existing = $this->sessionManager->getSessionByClientID($this->id);
-                if($existing !== null && $existing !== $this){
-                    $this->sessionManager->removeSession($existing, "Guid reused by new connection");
-                }
-                if($packet->serverPort === $this->sessionManager->getPort() or !$this->sessionManager->portChecking){
-                    //Clamp both ends: RakNet minimum MTU is 576. A value of 0 (or anything < 34)
-                    //would make str_split() length negative in addEncapsulatedToQueue() and crash the thread.
-                    $this->mtuSize = min(max((int) abs($packet->mtuSize), 576), 1464); //Max size, do not allow creating large buffers to fill server memory
-                    $pk = new OPEN_CONNECTION_REPLY_2();
-                    $pk->mtuSize = $this->mtuSize;
-                    $pk->serverID = $this->sessionManager->getID();
-					$pk->clientAddress = $this->address;
-                    $pk->clientPort = $this->port;
-                    $this->sendPacket($pk);
-                    $this->state = self::STATE_CONNECTING_2;
-                }
-            }
         }
+    }
+
+    /**
+     * Called by SessionManager once the offline handshake has completed. The session only
+     * exists from that point on, so it starts already past REQUEST_2 and never has to
+     * handle an offline packet itself.
+     */
+    public function acceptConnection($clientId, $mtuSize){
+        $this->id = $clientId;
+        $this->mtuSize = $mtuSize;
+        $this->state = self::STATE_CONNECTING_2;
     }
 
     public function close(){

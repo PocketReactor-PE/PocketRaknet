@@ -4,9 +4,10 @@ namespace pocketraknet\protocol;
 
 use pocketraknet\RakLib;
 
-class INCOMPATIBLE_PROTOCOL_VERSION extends Packet {
+class INCOMPATIBLE_PROTOCOL_VERSION extends OfflineMessage {
 
     public static $ID = 0x19;
+    public static $MIN_LENGTH = 26; //1 (ID) + 1 (protocol) + 16 (MAGIC) + 8 (serverID)
 
     public $protocolVersion;
     public $serverID;
@@ -15,14 +16,14 @@ class INCOMPATIBLE_PROTOCOL_VERSION extends Packet {
     {
         parent::encode();
         $this->putByte($this->protocolVersion);
-        $this->put(RakLib::MAGIC);
+        $this->writeMagic();
         $this->putLong($this->serverID);
     }
 
     public function decode(){
         parent::decode();
         $this->protocolVersion = $this->getByte();
-        $this->offset += 16; //MAGIC
+        $this->readMagic();
         $this->serverID = $this->getLong();
     }
 }

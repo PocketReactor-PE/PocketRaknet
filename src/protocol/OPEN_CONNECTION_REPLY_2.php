@@ -17,8 +17,9 @@ namespace pocketraknet\protocol;
 
 use pocketraknet\RakLib;
 
-class OPEN_CONNECTION_REPLY_2 extends Packet{
+class OPEN_CONNECTION_REPLY_2 extends OfflineMessage{
     public static $ID = 0x08;
+    public static $MIN_LENGTH = 34; //1 + 16 + 8 (serverID) + 7 (IPv4 address) + 2 (mtu)
 
     public $serverID;
     public $clientAddress;
@@ -27,7 +28,7 @@ class OPEN_CONNECTION_REPLY_2 extends Packet{
 
     public function encode(){
         parent::encode();
-        $this->put(RakLib::MAGIC);
+        $this->writeMagic();
         $this->putLong($this->serverID);
         $this->putAddress($this->clientAddress, $this->clientPort, 4);
         $this->putShort($this->mtuSize);
@@ -36,7 +37,7 @@ class OPEN_CONNECTION_REPLY_2 extends Packet{
 
     public function decode(){
         parent::decode();
-        $this->offset += 16;
+        $this->readMagic();
         $this->serverID = $this->getLong();
 		$this->getAddress($this->clientAddress, $this->clientPort);
         $this->mtuSize = $this->getShort();

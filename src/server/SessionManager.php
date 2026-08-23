@@ -35,6 +35,7 @@ use pocketraknet\protocol\DATA_PACKET_D;
 use pocketraknet\protocol\DATA_PACKET_E;
 use pocketraknet\protocol\DATA_PACKET_F;
 use pocketraknet\protocol\EncapsulatedPacket;
+use pocketraknet\protocol\INCOMPATIBLE_PROTOCOL_VERSION;
 use pocketraknet\protocol\NACK;
 use pocketraknet\protocol\OPEN_CONNECTION_REPLY_1;
 use pocketraknet\protocol\OPEN_CONNECTION_REPLY_2;
@@ -65,6 +66,27 @@ class SessionManager{
     private const RAKLIB_TPS = 100;
     private const RAKLIB_TIME_PER_TICK = 1 / self::RAKLIB_TPS;
     protected $packetLimit = 200;
+
+    /**
+     * Ceiling on datagrams accepted per tick, all sources together.
+     * The per-address counter is useless against a flood with forged sources: every
+     * fake address starts with a fresh budget, so only a global count caps it.
+     * 120 bots were measured at about 26 datagrams per tick, so this leaves roughly
+     * seventy times the observed load, and still fires well below the 5000-packet
+     * ceiling of the receive loop - above that it could never trigger at all.
+     */
+    protected $globalPacketLimit = 2000;
+    protected $globalCount = 0;
+
+    /**
+     * Half-open handshakes, as "address:port" => time of the REQUEST_1.
+     * An OPEN_CONNECTION_REQUEST_1 used to allocate a full Session straight away, so any
+     * source could make the server build one and keep it until it timed out. A pending
+     * entry is a single float instead, it is capped, and it expires on its own.
+     */
+    protected $pendingConnections = [];
+    protected $maxPendingConnections = 1024;
+    private const PENDING_TIMEOUT = 10;
 
     protected $shutdown = false;
 
@@ -160,6 +182,16 @@ class SessionManager{
 			}
 		}
 		$this->ipSec = [];
+		$this->globalCount = 0;
+
+		if($this->pendingConnections !== []){
+			$expiry = $time - self::PENDING_TIMEOUT;
+			foreach($this->pendingConnections as $pendingId => $since){
+				if($since < $expiry){
+					unset($this->pendingConnections[$pendingId]);
+				}
+			}
+		}
 
 
 
@@ -195,6 +227,10 @@ class SessionManager{
             $this->receiveBytes += $len;
             if(isset($this->block[$source])){
                 return true;
+            }
+
+            if(++$this->globalCount > $this->globalPacketLimit){
+                return true; //drop before parsing; the loop keeps draining the socket
             }
 
             if(isset($this->ipSec[$source])){
@@ -242,7 +278,7 @@ class SessionManager{
                 if(!$packet->isValid()){
                     return true;
                 }
-                $this->getSession($source,$port)->handlePacket($packet);
+                $this->handleUnconnected($packet, $source, $port);
                 return true;
             }
             //--- Connected traffic ---------------------------------------------------
@@ -422,13 +458,81 @@ class SessionManager{
      * @return Session
      */
     public function getSession($ip, $port){
+        //Lookup only. Sessions are created in handleUnconnected(), once the offline
+        //handshake has completed - never as a side effect of receiving a datagram.
         $id = $ip . ":" . $port;
-        if(!isset($this->sessions[$id])){
-            $this->checkSessions();
-            $this->sessions[$id] = new Session($this, $ip, $port);
+
+        return isset($this->sessions[$id]) ? $this->sessions[$id] : null;
+    }
+
+    /**
+     * Offline handshake. Handled here rather than in Session so that no Session object
+     * exists before the exchange completes.
+     */
+    private function handleUnconnected(Packet $packet, $source, $port){
+        $id = $source . ":" . $port;
+
+        if($packet instanceof OPEN_CONNECTION_REQUEST_1){
+            if($packet->protocol !== RakLib::PROTOCOL){
+                $pk = new INCOMPATIBLE_PROTOCOL_VERSION();
+                $pk->protocolVersion = RakLib::PROTOCOL;
+                $pk->serverID = $this->getID();
+                $this->sendPacket($pk, $source, $port);
+                return;
+            }
+
+            if(!isset($this->pendingConnections[$id]) and count($this->pendingConnections) >= $this->maxPendingConnections){
+                return; //pending table full: drop rather than grow without bound
+            }
+            $this->pendingConnections[$id] = microtime(true);
+
+            $pk = new OPEN_CONNECTION_REPLY_1();
+            $pk->mtuSize = $packet->mtuSize;
+            $pk->serverID = $this->getID();
+            $this->sendPacket($pk, $source, $port);
+            return;
         }
 
-        return $this->sessions[$id];
+        //OPEN_CONNECTION_REQUEST_2 from here on.
+        if(!isset($this->pendingConnections[$id])){
+            return; //no REQUEST_1 from this address: nothing to complete
+        }
+        if($packet->serverPort !== $this->getPort() and $this->portChecking){
+            return;
+        }
+        if(isset($this->sessions[$id])){
+            return; //already connected: never rebuild a session under a live one
+        }
+
+        //A GUID is not a credential: it travels in clear in every handshake, so anyone
+        //who can read one could otherwise drop the session it belongs to from any address.
+        //Only accept the takeover from the SAME address - a client rebinding its source
+        //port. From another address, refuse without touching the existing session.
+        $existing = $this->getSessionByClientID($packet->clientID);
+        if($existing !== null){
+            if($existing->getAddress() !== $source){
+                $this->getLogger()->notice("Refused GUID takeover of " . $existing->getAddress() . ":" . $existing->getPort() . " by " . $id);
+                return;
+            }
+            $this->removeSession($existing, "Guid reused by new connection");
+        }
+
+        //Clamp both ends: RakNet minimum MTU is 576. A value of 0 (or anything < 34) would
+        //make str_split() length negative in addEncapsulatedToQueue() and crash the thread.
+        $mtuSize = min(max((int) abs($packet->mtuSize), 576), 1464);
+
+        unset($this->pendingConnections[$id]);
+        $this->checkSessions();
+        $session = new Session($this, $source, $port);
+        $session->acceptConnection($packet->clientID, $mtuSize);
+        $this->sessions[$id] = $session;
+
+        $pk = new OPEN_CONNECTION_REPLY_2();
+        $pk->mtuSize = $mtuSize;
+        $pk->serverID = $this->getID();
+        $pk->clientAddress = $source;
+        $pk->clientPort = $port;
+        $this->sendPacket($pk, $source, $port);
     }
 
     public function removeSession(Session $session, $reason = "unknown"){
