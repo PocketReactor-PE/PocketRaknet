@@ -133,7 +133,10 @@ class RakLibServer extends \pmmp\thread\Thread{
 	}
 
 	public function errorHandler($errno, $errstr, $errfile, $errline, $trace = null){
-		if(error_reporting() === 0){
+		//PHP 8 no longer zeroes error_reporting() for an @-suppressed diagnostic: it masks that
+		//error's bit out of the reporting level instead. Testing for 0 therefore never matched
+		//again, and every @ in the thread kept logging a debug line plus a full backtrace.
+		if((error_reporting() & $errno) === 0){
 			return false;
 		}
 		$errorConversion = [

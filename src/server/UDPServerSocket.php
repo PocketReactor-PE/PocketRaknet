@@ -24,11 +24,19 @@ namespace pocketraknet\server;
 use pocketraknet\utils\Logger;
 
 class UDPServerSocket{
+    /**
+     * Returned by readPacket() when the read failed for a reason that says nothing about the
+     * datagrams still queued on the socket. Distinct from false (socket empty) so the caller
+     * can keep draining instead of ending its receive loop for the tick.
+     */
+    const RECV_IGNORED_ERROR = -1;
+
     /** @var Logger */
     protected $logger;
     protected $socket;
 
     public function __construct(Logger $logger, $port = 19132, $interface = "0.0.0.0"){
+        $this->logger = $logger;
         $this->socket = socket_create(AF_INET, SOCK_DGRAM, SOL_UDP);
         //socket_set_option($this->socket, SOL_SOCKET, SO_BROADCAST, 1); //Allow sending broadcast messages
         if(@socket_bind($this->socket, $interface, $port) === true){
@@ -55,10 +63,27 @@ class UDPServerSocket{
      * @param string &$source
      * @param int    &$port
      *
-     * @return int
+     * @return int|bool Bytes read, false if the socket had nothing to give, or
+     *                  self::RECV_IGNORED_ERROR if the read failed for an ignorable reason.
      */
     public function readPacket(&$buffer, &$source, &$port){
-        return socket_recvfrom($this->socket, $buffer, 65535, 0, $source, $port);
+        $len = @socket_recvfrom($this->socket, $buffer, 65535, 0, $source, $port);
+        if($len === false){
+            $errno = socket_last_error($this->socket);
+            socket_clear_error($this->socket);
+            if($errno === SOCKET_ECONNRESET){
+                //Windows only. A socket_sendto() to a peer that had already closed its socket draws
+                //an ICMP Port Unreachable, and Windows reports it on the NEXT recvfrom() on this
+                //socket instead of dropping it. It concerns a peer we were writing to, not the
+                //datagrams queued here, so the caller must keep draining. Dead sessions are reaped
+                //by their own timeout.
+                return self::RECV_IGNORED_ERROR;
+            }
+            if($errno !== SOCKET_EWOULDBLOCK){ //EWOULDBLOCK is just an empty non-blocking socket
+                $this->logger->debug("Failed to recv (errno $errno): " . trim(socket_strerror($errno)));
+            }
+        }
+        return $len;
     }
 
     /**
@@ -69,7 +94,18 @@ class UDPServerSocket{
      * @return int
      */
     public function writePacket($buffer, $dest, $port){
-        return socket_sendto($this->socket, $buffer, strlen($buffer), 0, $dest, $port);
+        $result = @socket_sendto($this->socket, $buffer, strlen($buffer), 0, $dest, $port);
+        if($result === false){
+            $errno = socket_last_error($this->socket);
+            socket_clear_error($this->socket);
+            //Same ICMP Port Unreachable as in readPacket(), surfacing on the send side when the
+            //peer went away between two writes. Nothing to do about it here either.
+            if($errno !== SOCKET_ECONNRESET and $errno !== SOCKET_EWOULDBLOCK){
+                $this->logger->debug("Failed to send to $dest $port (errno $errno): " . trim(socket_strerror($errno)));
+            }
+            return 0; //callers add the result to their sent-byte counters
+        }
+        return $result;
     }
 
     /**

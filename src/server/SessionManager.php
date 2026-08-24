@@ -233,7 +233,13 @@ class SessionManager{
 
 
     private function receivePacket(){
-        if(($len = $this->socket->readPacket($buffer, $source, $port)) > 0){
+        $len = $this->socket->readPacket($buffer, $source, $port);
+        if($len === UDPServerSocket::RECV_IGNORED_ERROR){
+            //Not a real read failure and not an empty socket: say "handled" so tickProcessor()
+            //keeps draining this tick instead of stopping on someone else's dead peer.
+            return true;
+        }
+        if($len > 0){
             $this->receiveBytes += $len;
             if(isset($this->block[$source])){
                 return true;
