@@ -19,6 +19,9 @@ use pocketraknet\Binary;
 
 
 abstract class AcknowledgePacket extends Packet{
+    /** Ceiling on datagram numbers decoded from one packet, all ranges together. */
+    const MAX_ENTRIES = 4096;
+
     /** @var int[] */
     public $packets = [];
 
@@ -81,12 +84,15 @@ abstract class AcknowledgePacket extends Packet{
         $count = $this->getShort();
         $this->packets = [];
         $cnt = 0;
-        for($i = 0; $i < $count and !$this->feof() and $cnt < 4096; ++$i){
+        //The binary's RangeList has no per-range cap: a NAK after a burst loss legitimately
+        //covers up to 1000 datagrams (the hole cap of CCRakNetSlidingWindow::OnGotPacket).
+        //Only the total is bounded, to keep a forged list from expanding without limit.
+        for($i = 0; $i < $count and !$this->feof() and $cnt < self::MAX_ENTRIES; ++$i){
             if($this->getByte() === 0){
                 $start = $this->getLTriad();
                 $end = $this->getLTriad();
-                if(($end - $start) > 512){
-                    $end = $start + 512;
+                if(($end - $start) > (self::MAX_ENTRIES - $cnt)){
+                    $end = $start + (self::MAX_ENTRIES - $cnt);
                 }
                 for($c = $start; $c <= $end; ++$c){
                     $this->packets[$cnt++] = $c;

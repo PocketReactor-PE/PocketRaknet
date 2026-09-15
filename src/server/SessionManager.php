@@ -92,6 +92,9 @@ class SessionManager{
     protected $maxPendingConnections = 1024;
     private const PENDING_TIMEOUT = 10;
 
+    const MIN_MTU = 576;
+    const MAX_MTU = 1464;
+
     protected $shutdown = false;
 
     protected $ticks = 0;
@@ -267,7 +270,9 @@ class SessionManager{
             //would be too late - the object would already exist.
             //The length test comes before decode() because the readers in Packet are
             //unbounded and raise PHP warnings on a truncated buffer
-            if($pid === UNCONNECTED_PING::$ID){
+            //0x02 (ID_UNCONNECTED_PING_OPEN_CONNECTIONS) is the same ping, answered by RakPeer
+            //only while it accepts connections. We always do, so both get the same pong.
+            if($pid === UNCONNECTED_PING::$ID or $pid === UNCONNECTED_PING_OPEN_CONNECTIONS::$ID){
                 if($len < UNCONNECTED_PING::$MIN_LENGTH){
                     return true;
                 }
@@ -504,7 +509,10 @@ class SessionManager{
             $this->pendingConnections[$id] = microtime(true);
 
             $pk = new OPEN_CONNECTION_REPLY_1();
-            $pk->mtuSize = $packet->mtuSize;
+            //Same clamp as REQUEST_2 below. RakPeer::ProcessOfflineNetworkPacket lowers the
+            //probed MTU to its own maximum here already; echoing an unclamped probe would
+            //announce one value in REPLY_1 and another in REPLY_2.
+            $pk->mtuSize = self::clampMTU($packet->mtuSize);
             $pk->serverID = $this->getID();
             $this->sendPacket($pk, $source, $port);
             return;
@@ -534,9 +542,7 @@ class SessionManager{
             $this->removeSession($existing, "Guid reused by new connection");
         }
 
-        //Clamp both ends: RakNet minimum MTU is 576. A value of 0 (or anything < 34) would
-        //make str_split() length negative in addEncapsulatedToQueue() and crash the thread.
-        $mtuSize = min(max((int) abs($packet->mtuSize), 576), 1464);
+        $mtuSize = self::clampMTU($packet->mtuSize);
 
         unset($this->pendingConnections[$id]);
         $this->checkSessions();
@@ -550,6 +556,14 @@ class SessionManager{
         $pk->clientAddress = $source;
         $pk->clientPort = $port;
         $this->sendPacket($pk, $source, $port);
+    }
+
+    /**
+     * Clamp both ends: RakNet minimum MTU is 576. A value of 0 (or anything < 34) would
+     * make str_split() length negative in addEncapsulatedToQueue() and crash the thread.
+     */
+    public static function clampMTU($mtuSize){
+        return min(max((int) abs($mtuSize), self::MIN_MTU), self::MAX_MTU);
     }
 
     public function removeSession(Session $session, $reason = "unknown"){

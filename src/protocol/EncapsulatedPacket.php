@@ -153,16 +153,38 @@ class EncapsulatedPacket{
         return $packet;
     }
 
+    /**
+     * The reliability as it is written in the 3 flag bits.
+     *
+     * The three "_WITH_ACK_RECEIPT" variants never appear on the wire: the peer's
+     * WriteToBitStreamFromInternalPacket folds them before writing (7 -> 3, 6 -> 2, 5 -> 0).
+     * A 7 sent as-is is parsed by the peer, but its ordering machinery only runs for
+     * reliabilities below 5 and its duplicate detection only for 2..4, so the message would
+     * be delivered out of order and never deduplicated. The ACK receipt itself is carried by
+     * $needACK / $identifierACK, which are internal to RakLib.
+     */
+    public static function wireReliability($reliability){
+        if($reliability === 7){
+            return 3;
+        }elseif($reliability === 6){
+            return 2;
+        }elseif($reliability === 5){
+            return 0;
+        }
+        return $reliability;
+    }
+
     public function getTotalLength()
     {
         //The same tests as toBinary(), and for the same reason: toBinary() writes these fields
         //based on the RELIABILITY, not on whether the property is null. Counting on "!== null"
         //under-reported reliabilities 1 and 4 by 3 bytes, where the sequenceIndex is always
         //written (through "?? 0") even when it was never assigned.
+        $reliability = self::wireReliability($this->reliability);
         return 3 + strlen($this->buffer)
-            + (($this->reliability >= 2 && $this->reliability !== 5) ? 3 : 0)
-            + (($this->reliability === 1 || $this->reliability === 4) ? 3 : 0)
-            + (($this->reliability === 1 || $this->reliability === 3 || $this->reliability === 4 || $this->reliability === 7) ? 4 : 0)
+            + (($reliability >= 2) ? 3 : 0)
+            + (($reliability === 1 || $reliability === 4) ? 3 : 0)
+            + (($reliability === 1 || $reliability === 3 || $reliability === 4) ? 4 : 0)
             + ($this->hasSplit ? 10 : 0);
     }
 
@@ -173,13 +195,16 @@ class EncapsulatedPacket{
      * @return string
      */
     public function toBinary($internal = false){
+        //The internal (main thread <-> RakLib) form keeps the raw reliability so that the
+        //ACK-receipt request survives the trip; only the wire form folds it.
+        $reliability = $internal ? $this->reliability : self::wireReliability($this->reliability);
         return
-			chr(($this->reliability << 5) | ($this->hasSplit ? 0b00010000 : 0)) .
-			($internal ? Binary::writeInt(strlen($this->buffer)) . Binary::writeInt($this->identifierACK) : Binary::writeShort(strlen($this->buffer) << 3)) .
-            (($this->reliability >= 2 && $this->reliability !== 5) ? Binary::writeLTriad($this->messageIndex) : "") .
-            (($this->reliability === 1 || $this->reliability === 4) ? Binary::writeLTriad($this->sequenceIndex ?? 0) : "") .
-            (($this->reliability === 1 || $this->reliability === 3 || $this->reliability === 4 || $this->reliability === 7)
-                    ? Binary::writeLTriad($this->orderIndex) . chr($this->orderChannel) : "") .
+			chr(($reliability << 5) | ($this->hasSplit ? 0b00010000 : 0)) .
+			($internal ? Binary::writeInt(strlen($this->buffer)) . Binary::writeInt((int) $this->identifierACK) : Binary::writeShort(strlen($this->buffer) << 3)) .
+            (($reliability >= 2 && $reliability !== 5) ? Binary::writeLTriad((int) $this->messageIndex) : "") .
+            (($reliability === 1 || $reliability === 4) ? Binary::writeLTriad((int) $this->sequenceIndex) : "") .
+            (($reliability === 1 || $reliability === 3 || $reliability === 4 || $reliability === 7)
+                    ? Binary::writeLTriad((int) $this->orderIndex) . chr((int) $this->orderChannel) : "") .
 			($this->hasSplit ? Binary::writeInt($this->splitCount) . Binary::writeShort($this->splitID) . Binary::writeInt($this->splitIndex) : "")
 			. $this->buffer;
     }

@@ -16,7 +16,9 @@
 namespace pocketraknet;
 
 
-//Dependencies check
+//Dependencies check. Skipped when POCKETRAKNET_SKIP_DEPENDENCY_CHECK is defined, so that the
+//protocol and Session classes can be unit-tested on a plain PHP without pmmpthread.
+if(!defined("POCKETRAKNET_SKIP_DEPENDENCY_CHECK")){
 $errors = 0;
 if(version_compare("8.2", PHP_VERSION) > 0){
     echo "[CRITICAL] Use PHP >= 8.2" . PHP_EOL;
@@ -43,6 +45,7 @@ if($errors > 0){
     exit(1); //Exit with error
 }
 unset($errors);
+}
 
 abstract class RakLib{
     const VERSION = "0.8.0";
